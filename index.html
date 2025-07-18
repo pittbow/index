@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>流體力學單位換算器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+        }
+        .converter-card {
+            background-color: white;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: all 0.3s ease-in-out;
+        }
+        .converter-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        .result-display {
+            background-color: #f3f4f6;
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            font-weight: 600;
+            color: #1e40af;
+            word-break: break-all;
+        }
+        select, input {
+            border-radius: 0.5rem;
+            border: 1px solid #d1d5db;
+            padding: 0.5rem 0.75rem;
+            transition: border-color 0.2s;
+        }
+        select:focus, input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.4);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">流體力學單位換算器</h1>
+            <p class="text-gray-600 mt-2">一個快速、簡單的工具來換算流體力學中的常用單位</p>
+        </header>
+
+        <div id="converter-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- 轉換器卡片將由 JavaScript 動態生成 -->
+        </div>
+    </div>
+
+    <script>
+        // 單位定義：所有轉換因子都基於 SI 單位
+        const unitFactors = {
+            pressure: {
+                name: "壓力 (Pressure)",
+                baseUnit: "Pa",
+                units: {
+                    'Pa (Pascal)': 1,
+                    'kPa (kilopascal)': 1000,
+                    'MPa (megapascal)': 1e6,
+                    'bar': 100000,
+                    'atm (standard atmosphere)': 101325,
+                    'psi (lb/in²)': 6894.76,
+                    'kgf/cm²': 98066.5,
+                    'mmH₂O (4°C)': 9.80665,
+                    'mmHg (0°C)': 133.322
+                }
+            },
+            density: {
+                name: "密度 (Density)",
+                baseUnit: "kg/m³",
+                units: {
+                    'kg/m³': 1,
+                    'g/cm³': 1000,
+                    'kg/L': 1000,
+                    'lb/ft³': 16.0185,
+                    'slug/ft³': 515.379
+                }
+            },
+            dynamic_viscosity: {
+                name: "動力黏度 (Dynamic Viscosity)",
+                baseUnit: "Pa·s",
+                units: {
+                    'Pa·s (N·s/m²)': 1,
+                    'mPa·s': 0.001,
+                    'cP (centipoise)': 0.001,
+                    'P (poise)': 0.1,
+                    'lb/(ft·s)': 1.48816,
+                    'kg/(m·s)': 1
+                }
+            },
+            kinematic_viscosity: {
+                name: "運動黏度 (Kinematic Viscosity)",
+                baseUnit: "m²/s",
+                units: {
+                    'm²/s': 1,
+                    'cm²/s (Stoke)': 0.0001,
+                    'mm²/s (centistoke)': 1e-6,
+                    'ft²/s': 0.092903
+                }
+            },
+            velocity: {
+                name: "速度 (Velocity)",
+                baseUnit: "m/s",
+                units: {
+                    'm/s': 1,
+                    'km/h': 1 / 3.6,
+                    'ft/s': 0.3048,
+                    'mph (miles/h)': 0.44704,
+                    'knot': 0.514444
+                }
+            },
+            flow_rate_volume: {
+                name: "體積流率 (Volume Flow Rate)",
+                baseUnit: "m³/s",
+                units: {
+                    'm³/s': 1,
+                    'L/s': 0.001,
+                    'L/min': 0.001 / 60,
+                    'm³/h': 1 / 3600,
+                    'ft³/s (cfs)': 0.0283168,
+                    'ft³/min (cfm)': 0.0283168 / 60,
+                    'gal/min (US)': 0.0000630902
+                }
+            },
+             force: {
+                name: "力 (Force)",
+                baseUnit: "N",
+                units: {
+                    'N (Newton)': 1,
+                    'kN': 1000,
+                    'dyn': 1e-5,
+                    'kgf (kilogram-force)': 9.80665,
+                    'lbf (pound-force)': 4.44822
+                }
+            },
+            power: {
+                name: "功率 (Power)",
+                baseUnit: "W",
+                units: {
+                    'W (Watt)': 1,
+                    'kW': 1000,
+                    'MW': 1e6,
+                    'hp (mechanical)': 745.7,
+                    'hp (metric)': 735.499,
+                    'ft·lbf/s': 1.35582,
+                    'kcal/h': 1.163
+                }
+            },
+            energy: {
+                name: "能量/功 (Energy/Work)",
+                baseUnit: "J",
+                units: {
+                    'J (Joule)': 1,
+                    'kJ': 1000,
+                    'cal': 4.184,
+                    'kcal': 4184,
+                    'Btu': 1055.06,
+                    'kWh': 3.6e6,
+                    'ft·lbf': 1.35582
+                }
+            }
+        };
+
+        const converterGrid = document.getElementById('converter-grid');
+
+        // 創建所有轉換器卡片
+        Object.keys(unitFactors).forEach(key => {
+            const card = createConverterCard(key, unitFactors[key]);
+            converterGrid.appendChild(card);
+        });
+
+        // 為所有卡片初始化計算
+        document.addEventListener('DOMContentLoaded', () => {
+             Object.keys(unitFactors).forEach(key => {
+                calculate(key);
+            });
+        });
+
+        function createConverterCard(key, data) {
+            const card = document.createElement('div');
+            card.className = 'converter-card flex flex-col gap-4';
+            card.id = `card-${key}`;
+
+            const title = `<h2 class="text-xl font-bold text-blue-800">${data.name}</h2>`;
+            
+            const unitOptions = Object.keys(data.units)
+                .map(unit => `<option value="${unit}">${unit}</option>`)
+                .join('');
+
+            const converterBody = `
+                <div class="flex flex-col gap-2">
+                    <label for="input-${key}" class="text-sm font-medium text-gray-700">輸入值</label>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="input-${key}" value="1" class="w-full">
+                        <select id="from-${key}" class="w-auto">${unitOptions}</select>
+                    </div>
+                </div>
+                <div class="flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-500"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label for="to-${key}" class="text-sm font-medium text-gray-700">換算為</label>
+                    <select id="to-${key}" class="w-full">${unitOptions}</select>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-gray-700 mb-1">結果</p>
+                    <div id="result-${key}" class="result-display text-lg"></div>
+                </div>
+            `;
+
+            card.innerHTML = title + converterBody;
+            
+            // 預設選擇第二個單位
+            const toSelect = card.querySelector(`#to-${key}`);
+            if (toSelect.options.length > 1) {
+                toSelect.selectedIndex = 1;
+            }
+
+            // 添加事件監聽器
+            card.addEventListener('input', () => calculate(key));
+            card.addEventListener('change', () => calculate(key));
+
+            return card;
+        }
+
+        function calculate(key) {
+            const data = unitFactors[key];
+            const inputEl = document.getElementById(`input-${key}`);
+            const fromUnit = document.getElementById(`from-${key}`).value;
+            const toUnit = document.getElementById(`to-${key}`).value;
+            const resultEl = document.getElementById(`result-${key}`);
+
+            const inputValue = parseFloat(inputEl.value);
+
+            if (isNaN(inputValue)) {
+                resultEl.textContent = '請輸入有效的數字';
+                return;
+            }
+
+            // 步驟 1: 將輸入值轉換為基礎 SI 單位
+            const valueInBaseUnit = inputValue * data.units[fromUnit];
+
+            // 步驟 2: 從基礎 SI 單位轉換為目標單位
+            const resultValue = valueInBaseUnit / data.units[toUnit];
+
+            // 格式化輸出以提高可讀性
+            let displayValue;
+            if (resultValue === 0) {
+                displayValue = "0";
+            } else if (Math.abs(resultValue) < 1e-6 || Math.abs(resultValue) > 1e9) {
+                displayValue = resultValue.toExponential(5);
+            } else {
+                // 對非常接近整數的數字進行四捨五入
+                if (Math.abs(resultValue - Math.round(resultValue)) < 1e-9) {
+                     displayValue = Math.round(resultValue).toString();
+                } else {
+                    // 使用 toPrecision 來處理有效數字
+                    displayValue = parseFloat(resultValue.toPrecision(8)).toString();
+                }
+            }
+            
+            resultEl.textContent = `${displayValue}`;
+        }
+    </script>
+</body>
+</html>
